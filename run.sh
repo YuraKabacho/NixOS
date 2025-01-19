@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# Clone the repository
-git clone https://github.com/YuraKabacho/NixOS
-
-# Move disko.nix to the current directory
-mv ./NixOS/disko.nix ./
-
 # Run disko with destroy, format, and mount mode
 sudo nix --experimental-features "nix-command flakes" run github:nix-community/disko/latest -- --mode destroy,format,mount ./disko.nix
 
