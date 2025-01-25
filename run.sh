@@ -12,6 +12,9 @@ sudo fdisk -l
 # Generate NixOS configuration files for the system in /mnt
 sudo nixos-generate-config --root /mnt
 
+# Update flake.nix file and generate flake.lock
+sudo nix --experimental-features "nix-command flakes" flake update
+
 # Copy hardware configuration file from the generated NixOS configuration to your local host directory
 cp /mnt/etc/nixos/hardware-configuration.nix ./hosts/kabacho/
 
