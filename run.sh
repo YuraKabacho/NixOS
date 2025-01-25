@@ -18,6 +18,41 @@ function info_message() {
     echo -e "${CYAN}$1${RESET}"
 }
 
+# Disk management and other steps
+echo -e "${YELLOW}Do you want to run disko?${RESET}"
+echo -e "${GREEN}1) Yes${RESET}"
+echo -e "${RED}2) No${RESET}"
+read -p "Enter your choice (1 or 2): " disko_choice
+
+if [[ $disko_choice -eq 1 ]]; then
+    echo -e "${YELLOW}Choose disko mode:${RESET}"
+    echo -e "${GREEN}1) destroy${RESET}"
+    echo -e "${GREEN}2) format${RESET}"
+    echo -e "${GREEN}3) mount${RESET}"
+    echo -e "${CYAN}Enter your choices separated by commas:${RESET}"
+    read -p "Choices: " disko_modes
+
+    disko_mode_string=""
+    if [[ $disko_modes == *"1"* ]]; then
+        disko_mode_string+="destroy,"
+    fi
+    if [[ $disko_modes == *"2"* ]]; then
+        disko_mode_string+="format,"
+    fi
+    if [[ $disko_modes == *"3"* ]]; then
+        disko_mode_string+="mount,"
+    fi
+
+    disko_mode_string=${disko_mode_string%,} # Remove trailing comma
+    info_message "Running disko with mode: ${disko_mode_string}"
+    sudo nix --experimental-features "nix-command flakes" run github:nix-community/disko/latest -- --mode "$disko_mode_string" ./NixOS/disko.nix
+elif [[ $disko_choice -eq 2 ]]; then
+    echo -e "${RED}Skipping disko...${RESET}"
+else
+    warning_message "Invalid choice. Exiting script."
+    exit 1
+fi
+
 # Section: Hostname Selection or Creation
 info_message "Checking available hosts in ./NixOS/hosts directory..."
 AVAILABLE_HOSTS=$(ls ./NixOS/hosts 2>/dev/null) # List all existing hosts in the ./NixOS/hosts directory
@@ -133,42 +168,6 @@ else
     exit 1
 fi
 
-# Disk management and other steps
-echo -e "${YELLOW}Do you want to run disko?${RESET}"
-echo -e "${GREEN}1) Yes${RESET}"
-echo -e "${RED}2) No${RESET}"
-read -p "Enter your choice (1 or 2): " disko_choice
-
-if [[ $disko_choice -eq 1 ]]; then
-    echo -e "${YELLOW}Choose disko mode:${RESET}"
-    echo -e "${GREEN}1) destroy${RESET}"
-    echo -e "${GREEN}2) format${RESET}"
-    echo -e "${GREEN}3) mount${RESET}"
-    echo -e "${CYAN}Enter your choices separated by commas:${RESET}"
-    read -p "Choices: " disko_modes
-
-    disko_mode_string=""
-    if [[ $disko_modes == *"1"* ]]; then
-        disko_mode_string+="destroy,"
-    fi
-    if [[ $disko_modes == *"2"* ]]; then
-        disko_mode_string+="format,"
-    fi
-    if [[ $disko_modes == *"3"* ]]; then
-        disko_mode_string+="mount,"
-    fi
-
-    disko_mode_string=${disko_mode_string%,} # Remove trailing comma
-    info_message "Running disko with mode: ${disko_mode_string}"
-    sudo nix --experimental-features "nix-command flakes" run github:nix-community/disko/latest -- --mode "$disko_mode_string" ./NixOS/disko.nix
-elif [[ $disko_choice -eq 2 ]]; then
-    echo -e "${RED}Skipping disko...${RESET}"
-else
-    warning_message "Invalid choice. Exiting script."
-    exit 1
-fi
-
-
 # Prompt the user to check block devices and partitions
 echo -e "${YELLOW}Do you want to inspect block devices and partition table?${RESET}"
 echo -e "${GREEN}1) Yes${RESET}"
@@ -241,9 +240,11 @@ fi
 
 # Change the current working directory to /NixOS
 cd NixOS/
+info_message "Redirected to NixOS/"
 
 # Stage changes (e.g., new configuration files) to Git for version tracking
 git add .
+info_message "Added to hardware-configuration.nix git"
 
 # Prompt to clean garbage
 echo -e "${YELLOW}Do you want to clean garbage to free up space?${RESET}"
