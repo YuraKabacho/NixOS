@@ -94,6 +94,23 @@ else
             info_message "Copied hardware-configuration.nix to ./NixOS/hosts/$HOSTNAME/"
         else
             warning_message "Source hardware-configuration.nix not found at /mnt/etc/nixos/. Please generate it first."
+            echo -e "${YELLOW}Do you want to generate hardware-configuration.nix now?${RESET}"
+            echo -e "${GREEN}1) Yes${RESET}"
+            echo -e "${RED}2) No${RESET}"
+            read -p "Enter your choice (1 or 2): " generate_config_choice
+
+            if [[ $generate_config_choice -eq 1 ]]; then
+                info_message "Generating hardware-configuration.nix..."
+                sudo nixos-generate-config --root /mnt
+                if [[ -f "/mnt/etc/nixos/hardware-configuration.nix" ]]; then
+                    cp /mnt/etc/nixos/hardware-configuration.nix "./NixOS/hosts/$HOSTNAME/"
+                    info_message "Copied hardware-configuration.nix to ./NixOS/hosts/$HOSTNAME/"
+                else
+                    warning_message "Failed to generate hardware-configuration.nix. Please check your system."
+                fi
+            else
+                echo -e "${RED}Skipping hardware-configuration.nix generation...${RESET}"
+            fi
         fi
     else
         echo -e "${RED}Skipping hardware-configuration.nix copy...${RESET}"
