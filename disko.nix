@@ -14,7 +14,7 @@
                   };
             ESP = {
               type = "EF00";
-              size = "100M";
+              size = "512M";
               content = {
                 type = "filesystem";
                 format = "vfat";
