@@ -89,7 +89,8 @@ while true; do
     echo -e "${GREEN}1) Select an existing hostname${RESET}"
     echo -e "${BLUE}2) Create a new hostname by copying and renaming an existing one${RESET}"
     echo -e "${CYAN}3) Rename an existing hostname${RESET}"
-    read -p "Enter your choice (1, 2, or 3): " hostname_choice
+    echo -e "${RED}4) Delete an existing hostname${RESET}"  # New option to delete
+    read -p "Enter your choice (1, 2, 3, or 4): " hostname_choice
 
     case $hostname_choice in
         1) # Select an existing hostname
@@ -130,11 +131,27 @@ while true; do
                 info_message "Renamed $RENAME_HOST to $HOSTNAME"
             fi
             ;;
+        4) # Delete an existing hostname
+            echo -e "${YELLOW}Choose a host to delete:${RESET}"
+            echo "$AVAILABLE_HOSTS" | nl
+            read -p "Enter the number corresponding to the host to delete: " delete_host_number
+            DELETE_HOST=$(echo "$AVAILABLE_HOSTS" | sed -n "${delete_host_number}p")
+            if [[ -z "$DELETE_HOST" ]]; then
+                warning_message "Invalid selection. Please try again."
+            else
+                read -p "Are you sure you want to delete $DELETE_HOST? (y/n): " confirmation
+                if [[ "$confirmation" == "y" || "$confirmation" == "Y" ]]; then
+                    rm -rf "./NixOS/hosts/$DELETE_HOST"
+                    info_message "$DELETE_HOST has been deleted."
+                else
+                    info_message "Deletion cancelled."
+                fi
+            fi
+            ;;
         *) # Invalid input
             warning_message "Invalid choice. Please try again."
             ;;
     esac
-
 done
 
 # Section: Hardware Configuration File Handling
