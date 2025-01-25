@@ -1,15 +1,25 @@
-#!/bin/bash
+#!/bin/bash 
 
-# Run disko with destroy, format, and mount mode
+# Run disko to destroy existing partitions, format disks, and mount them based on the provided disko.nix configuration
 sudo nix --experimental-features "nix-command flakes" run github:nix-community/disko/latest -- --mode destroy,format,mount ./NixOS/disko.nix
 
-# List block devices
+# List block devices with filesystem information to verify disk partitions
 lsblk -f
 
+# Display partition table using fdisk to inspect disk layout
 sudo fdisk -l
 
-# Generate NixOS configuration
+# Generate NixOS configuration files for the system in /mnt
 sudo nixos-generate-config --root /mnt
 
-# Install NixOS with the specified flake
-sudo nixos-install switch --flake ./
+# Copy hardware configuration file from the generated NixOS configuration to your local host directory
+cp /mnt/etc/nixos/hardware-configuration.nix ./hosts/kabacho/
+
+# Stage changes (e.g., new configuration files) to Git for version tracking
+git add .
+
+# Install NixOS using the configuration from the specified flake ('kabacho')
+sudo nixos-install switch --flake ./#kabacho
+
+# Switch to the user-specific Home Manager configuration, applying settings like user environment setup
+home-manager switch
