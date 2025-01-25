@@ -6,6 +6,8 @@ sudo nix --experimental-features "nix-command flakes" run github:nix-community/d
 # List block devices
 lsblk -f
 
+sudo fdisk -l
+
 # Generate NixOS configuration
 sudo nixos-generate-config --root /mnt
 
