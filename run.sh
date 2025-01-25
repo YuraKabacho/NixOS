@@ -8,21 +8,128 @@ BLUE="\033[1;34m"
 CYAN="\033[1;36m"
 RESET="\033[0m"
 
-# Prompt the user to run disko or not
+# Function to display warnings
+function warning_message() {
+    echo -e "${RED}WARNING: $1${RESET}"
+}
+
+# Function to display informational messages
+function info_message() {
+    echo -e "${CYAN}$1${RESET}"
+}
+
+# Section: Hostname Selection or Creation
+info_message "Checking available hosts in ./NixOS/hosts directory..."
+AVAILABLE_HOSTS=$(ls ./NixOS/hosts 2>/dev/null) # List all existing hosts in the ./NixOS/hosts directory
+if [[ -z "$AVAILABLE_HOSTS" ]]; then
+    warning_message "No hosts available in ./NixOS/hosts. You will need to create a new one."
+else
+    echo -e "${YELLOW}Available hosts:${RESET}"
+    echo "$AVAILABLE_HOSTS" | nl # Print the hosts as a numbered list
+fi
+
+# Prompt user to select or manage hostnames
+echo -e "${YELLOW}Do you want to:${RESET}"
+echo -e "${GREEN}1) Select an existing hostname${RESET}"
+echo -e "${BLUE}2) Create a new hostname by copying and renaming an existing one${RESET}"
+echo -e "${CYAN}3) Rename an existing hostname${RESET}"
+read -p "Enter your choice (1, 2, or 3): " hostname_choice
+
+case $hostname_choice in
+    1) # Select an existing hostname
+        echo -e "${YELLOW}Select a hostname from the list:${RESET}"
+        echo "$AVAILABLE_HOSTS" | nl
+        read -p "Enter the number corresponding to your choice: " selected_host_number
+        HOSTNAME=$(echo "$AVAILABLE_HOSTS" | sed -n "${selected_host_number}p")
+        if [[ -z "$HOSTNAME" ]]; then
+            warning_message "Invalid selection. Exiting script."
+            exit 1
+        fi
+        info_message "Selected hostname: $HOSTNAME"
+        ;;
+    2) # Create a new hostname by copying an existing one
+        echo -e "${YELLOW}Choose an existing host to copy:${RESET}"
+        echo "$AVAILABLE_HOSTS" | nl
+        read -p "Enter the number corresponding to the host to copy: " copy_host_number
+        COPY_HOST=$(echo "$AVAILABLE_HOSTS" | sed -n "${copy_host_number}p")
+        if [[ -z "$COPY_HOST" ]]; then
+            warning_message "Invalid selection. Exiting script."
+            exit 1
+        fi
+        read -p "Enter the new hostname: " HOSTNAME
+        cp -r "./NixOS/hosts/$COPY_HOST" "./NixOS/hosts/$HOSTNAME"
+        info_message "Copied $COPY_HOST to create new host $HOSTNAME"
+        ;;
+    3) # Rename an existing hostname
+        echo -e "${YELLOW}Choose an existing host to rename:${RESET}"
+        echo "$AVAILABLE_HOSTS" | nl
+        read -p "Enter the number corresponding to the host to rename: " rename_host_number
+        RENAME_HOST=$(echo "$AVAILABLE_HOSTS" | sed -n "${rename_host_number}p")
+        if [[ -z "$RENAME_HOST" ]]; then
+            warning_message "Invalid selection. Exiting script."
+            exit 1
+        fi
+        read -p "Enter the new hostname: " HOSTNAME
+        mv "./NixOS/hosts/$RENAME_HOST" "./NixOS/hosts/$HOSTNAME"
+        info_message "Renamed $RENAME_HOST to $HOSTNAME"
+        ;;
+    *) # Invalid input
+        warning_message "Invalid choice. Exiting script."
+        exit 1
+        ;;
+esac
+
+# Section: Hardware Configuration File Handling
+if [[ -f "./NixOS/hosts/$HOSTNAME/hardware-configuration.nix" ]]; then
+    info_message "hardware-configuration.nix already exists in the $HOSTNAME directory."
+else
+    echo -e "${YELLOW}Do you want to copy the current hardware-configuration.nix to $HOSTNAME?${RESET}"
+    echo -e "${GREEN}1) Yes${RESET}"
+    echo -e "${RED}2) No${RESET}"
+    read -p "Enter your choice (1 or 2): " copy_hardware_choice
+
+    if [[ $copy_hardware_choice -eq 1 ]]; then
+        if [[ -f "/mnt/etc/nixos/hardware-configuration.nix" ]]; then
+            cp /mnt/etc/nixos/hardware-configuration.nix "./NixOS/hosts/$HOSTNAME/"
+            info_message "Copied hardware-configuration.nix to ./NixOS/hosts/$HOSTNAME/"
+        else
+            warning_message "Source hardware-configuration.nix not found at /mnt/etc/nixos/. Please generate it first."
+        fi
+    else
+        echo -e "${RED}Skipping hardware-configuration.nix copy...${RESET}"
+    fi
+fi
+
+# Prompt to check nix channels
+echo -e "${YELLOW}Do you want to check nix channels?${RESET}"
+echo -e "${GREEN}1) Yes${RESET}"
+echo -e "${RED}2) No${RESET}"
+read -p "Enter your choice (1 or 2): " nix_channel_choice
+
+if [[ $nix_channel_choice -eq 1 ]]; then
+    info_message "Listing nix channels..."
+    nix-channel --list
+elif [[ $nix_channel_choice -eq 2 ]]; then
+    echo -e "${RED}Skipping nix-channel check...${RESET}"
+else
+    warning_message "Invalid choice. Exiting script."
+    exit 1
+fi
+
+# Disk management and other steps
 echo -e "${YELLOW}Do you want to run disko?${RESET}"
 echo -e "${GREEN}1) Yes${RESET}"
 echo -e "${RED}2) No${RESET}"
 read -p "Enter your choice (1 or 2): " disko_choice
 
 if [[ $disko_choice -eq 1 ]]; then
-    echo -e "${YELLOW}Choose disko mode (you can select multiple modes):${RESET}"
+    echo -e "${YELLOW}Choose disko mode:${RESET}"
     echo -e "${GREEN}1) destroy${RESET}"
     echo -e "${GREEN}2) format${RESET}"
     echo -e "${GREEN}3) mount${RESET}"
-    echo -e "${CYAN}Enter your choices separated by commas (e.g., 1,3):${RESET}"
+    echo -e "${CYAN}Enter your choices separated by commas:${RESET}"
     read -p "Choices: " disko_modes
 
-    # Convert user input into a valid disko mode string
     disko_mode_string=""
     if [[ $disko_modes == *"1"* ]]; then
         disko_mode_string+="destroy,"
@@ -34,18 +141,16 @@ if [[ $disko_choice -eq 1 ]]; then
         disko_mode_string+="mount,"
     fi
 
-    # Remove trailing comma
-    disko_mode_string=${disko_mode_string%,}
-
-    echo -e "${BLUE}Running disko with mode: ${disko_mode_string}${RESET}"
-    # Run disko
+    disko_mode_string=${disko_mode_string%,} # Remove trailing comma
+    info_message "Running disko with mode: ${disko_mode_string}"
     sudo nix --experimental-features "nix-command flakes" run github:nix-community/disko/latest -- --mode "$disko_mode_string" ./NixOS/disko.nix
 elif [[ $disko_choice -eq 2 ]]; then
     echo -e "${RED}Skipping disko...${RESET}"
 else
-    echo -e "${RED}Invalid choice. Exiting script.${RESET}"
+    warning_message "Invalid choice. Exiting script."
     exit 1
 fi
+
 
 # Prompt the user to check block devices and partitions
 echo -e "${YELLOW}Do you want to inspect block devices and partition table?${RESET}"
@@ -54,37 +159,66 @@ echo -e "${RED}2) No${RESET}"
 read -p "Enter your choice (1 or 2): " inspect_choice
 
 if [[ $inspect_choice -eq 1 ]]; then
-    # List block devices with filesystem information
-    echo -e "${CYAN}Inspecting block devices...${RESET}"
+    info_message "Inspecting block devices..."
+# List block devices with filesystem information
     lsblk -f
-    # Display partition table using fdisk
-    echo -e "${CYAN}Inspecting partition table...${RESET}"
+    info_message "Inspecting partition table..."
+# Display partition table using fdisk
     sudo fdisk -l
 elif [[ $inspect_choice -eq 2 ]]; then
     echo -e "${RED}Skipping disk inspection...${RESET}"
 else
-    echo -e "${RED}Invalid choice. Exiting script.${RESET}"
+    warning_message "Invalid choice. Exiting script."
     exit 1
+fi
+
+# Check if hardware-configuration.nix exists in the host directory
+if [[ -f "./NixOS/hosts/$HOSTNAME/hardware-configuration.nix" ]]; then
+    info_message "hardware-configuration.nix exists in the $HOSTNAME directory."
+else
+    warning_message "hardware-configuration.nix does not exist in the $HOSTNAME directory!"
 fi
 
 # Prompt the user to choose between installation or rebuild
 echo -e "${YELLOW}Choose an option:${RESET}"
 echo -e "${GREEN}1) Install NixOS (nixos-install)${RESET}"
-echo -e "${BLUE}2) Rebuild NixOS configuration (nixos-rebuild switch)${RESET}"
+echo -e "${BLUE}2) Rebuild NixOS configuration (nixos-rebuild)${RESET}"
 read -p "Enter your choice (1 or 2): " choice
 
 if [[ $choice -eq 1 ]]; then
-    echo -e "${CYAN}Running installation flow...${RESET}"
-    # Generate NixOS configuration files for installation
+    info_message "Running installation flow..."
+# Generate NixOS configuration files for installation
     sudo nixos-generate-config --root /mnt
-    # Copy hardware configuration file from /mnt for installation
-    cp /mnt/etc/nixos/hardware-configuration.nix ./NixOS/hosts/kabacho/
+# Copy hardware configuration file from /mnt for installation
+    cp /mnt/etc/nixos/hardware-configuration.nix ./NixOS/hosts/$HOSTNAME/
 elif [[ $choice -eq 2 ]]; then
-    echo -e "${CYAN}Running rebuild flow...${RESET}"
-    # Copy hardware configuration file from the live system for rebuild
-    cp /etc/nixos/hardware-configuration.nix ./NixOS/hosts/kabacho/
+    echo -e "${YELLOW}Choose rebuild option:${RESET}"
+    echo -e "${GREEN}1) switch${RESET}"
+    echo -e "${GREEN}2) boot${RESET}"
+    echo -e "${GREEN}3) build${RESET}"
+    read -p "Enter your choice (1, 2, or 3): " rebuild_option
+
+    case $rebuild_option in
+        1)
+            rebuild_mode="switch"
+            ;;
+        2)
+            rebuild_mode="boot"
+            ;;
+        3)
+            rebuild_mode="build"
+            ;;
+        *)
+            warning_message "Invalid rebuild choice. Exiting script."
+            exit 1
+            ;;
+    esac
+
+    info_message "Running rebuild flow with mode: ${rebuild_mode}"
+# Copy hardware configuration file for installation
+    cp /etc/nixos/hardware-configuration.nix ./NixOS/hosts/$HOSTNAME/
 else
-    echo -e "${RED}Invalid choice. Exiting script.${RESET}"
+    warning_message "Invalid choice. Exiting script."
     exit 1
 fi
 
@@ -94,21 +228,50 @@ cd NixOS/
 # Stage changes (e.g., new configuration files) to Git for version tracking
 git add .
 
-# Removes packages to free up space
-sudo nix-collect-garbage
+# Prompt to clean garbage
+echo -e "${YELLOW}Do you want to clean garbage to free up space?${RESET}"
+echo -e "${GREEN}1) Yes${RESET}"
+echo -e "${RED}2) No${RESET}"
+read -p "Enter your choice (1 or 2): " clean_choice
 
+if [[ $clean_choice -eq 1 ]]; then
+    info_message "Cleaning up garbage..."
+# Removes packages to free up space
+    sudo nix-collect-garbage
+elif [[ $clean_choice -eq 2 ]]; then
+    echo -e "${RED}Skipping garbage cleaning...${RESET}"
+else
+    warning_message "Invalid choice. Skipping garbage cleaning."
+fi
+
+# Prompt to update flake
+echo -e "${YELLOW}Do you want to update flake?${RESET}"
+echo -e "${GREEN}1) Yes${RESET}"
+echo -e "${RED}2) No${RESET}"
+read -p "Enter your choice (1 or 2): " flake_update_choice
+
+if [[ $flake_update_choice -eq 1 ]]; then
+    if [[ ! -f "./flake.lock" ]]; then
+        warning_message "flake.lock does not exist. This will create a new one."
+    fi
+    info_message "Updating flake..."
 # Update flake.nix file and generate flake.lock
-sudo nix --experimental-features "nix-command flakes" flake update
+    sudo nix --experimental-features "nix-command flakes" flake update
+elif [[ $flake_update_choice -eq 2 ]]; then
+    echo -e "${RED}Skipping flake update...${RESET}"
+else
+    warning_message "Invalid choice. Skipping flake update."
+fi
 
 # Execute the chosen action
 if [[ $choice -eq 1 ]]; then
-    echo -e "${CYAN}Executing nixos-install...${RESET}"
+    info_message "Executing nixos-install..."
     sudo nixos-install --flake ./#kabacho
 elif [[ $choice -eq 2 ]]; then
-    echo -e "${CYAN}Executing nixos-rebuild switch...${RESET}"
-    sudo nixos-rebuild switch --flake ./#kabacho
+    info_message "Executing nixos-rebuild ${rebuild_mode}..."
+    sudo nixos-rebuild "$rebuild_mode" --flake ./#kabacho
 fi
 
-# Switch to the user-specific Home Manager configuration, applying settings like user environment setup
-echo -e "${GREEN}Applying Home Manager configuration...${RESET}"
+# Apply Home Manager configuration
+info_message "Applying Home Manager configuration..."
 home-manager switch
