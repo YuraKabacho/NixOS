@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Run disko with destroy, format, and mount mode
-sudo nix --experimental-features "nix-command flakes" run github:nix-community/disko/latest -- --mode destroy,format,mount ./NixOs/disko.nix
+sudo nix --experimental-features "nix-command flakes" run github:nix-community/disko/latest -- --mode destroy,format,mount ./NixOS/disko.nix
 
 # List block devices
 lsblk -f
