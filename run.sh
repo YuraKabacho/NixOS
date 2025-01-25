@@ -21,11 +21,30 @@ cd NixOS/
 # Stage changes (e.g., new configuration files) to Git for version tracking
 git add .
 
+# Removes packages to free up space
+sudo nix-collect-garbage
+
 # Update flake.nix file and generate flake.lock
 sudo nix --experimental-features "nix-command flakes" flake update
 
+# Prompt the user to choose between nixos-install and nixos-rebuild switch
+echo "Choose an option:"
+echo "1) Install NixOS (nixos-install)"
+echo "2) Rebuild NixOS configuration (nixos-rebuild switch)"
+read -p "Enter your choice (1 or 2): " choice
+
+if [[ $choice -eq 1 ]]; then
+    echo "Running nixos-install..."
 # Install NixOS using the configuration from the specified flake ('kabacho')
-sudo nixos-install --flake ./#kabacho
+    sudo nixos-install --flake ./#kabacho
+elif [[ $choice -eq 2 ]]; then
+    echo "Running nixos-rebuild switch..."
+# Rebuilding existing NixOS using the configuration from the specified flake ('kabacho')
+    sudo nixos-rebuild switch --flake ./#kabacho
+else
+    echo "Invalid choice. Exiting script."
+    exit 1
+fi
 
 # Switch to the user-specific Home Manager configuration, applying settings like user environment setup
 home-manager switch
