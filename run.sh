@@ -53,121 +53,6 @@ else
     exit 1
 fi
 
-# Section: Hostname Selection or Creation
-info_message "Checking available hosts in ./NixOS/hosts directory..."
-AVAILABLE_HOSTS=$(ls ./NixOS/hosts 2>/dev/null) # List all existing hosts in the ./NixOS/hosts directory
-if [[ -z "$AVAILABLE_HOSTS" ]]; then
-    warning_message "No hosts available in ./NixOS/hosts. You will need to create a new one."
-else
-    echo -e "${YELLOW}Available hosts:${RESET}"
-    echo "$AVAILABLE_HOSTS" | nl # Print the hosts as a numbered list
-fi
-
-# Prompt user to select or manage hostnames
-echo -e "${YELLOW}Do you want to:${RESET}"
-echo -e "${GREEN}1) Select an existing hostname${RESET}"
-echo -e "${BLUE}2) Create a new hostname by copying and renaming an existing one${RESET}"
-echo -e "${CYAN}3) Rename an existing hostname${RESET}"
-read -p "Enter your choice (1, 2, or 3): " hostname_choice
-
-case $hostname_choice in
-    1) # Select an existing hostname
-        echo -e "${YELLOW}Select a hostname from the list:${RESET}"
-        echo "$AVAILABLE_HOSTS" | nl
-        read -p "Enter the number corresponding to your choice: " selected_host_number
-        HOSTNAME=$(echo "$AVAILABLE_HOSTS" | sed -n "${selected_host_number}p")
-        if [[ -z "$HOSTNAME" ]]; then
-            warning_message "Invalid selection. Exiting script."
-            exit 1
-        fi
-        info_message "Selected hostname: $HOSTNAME"
-        ;;
-    2) # Create a new hostname by copying an existing one
-        echo -e "${YELLOW}Choose an existing host to copy:${RESET}"
-        echo "$AVAILABLE_HOSTS" | nl
-        read -p "Enter the number corresponding to the host to copy: " copy_host_number
-        COPY_HOST=$(echo "$AVAILABLE_HOSTS" | sed -n "${copy_host_number}p")
-        if [[ -z "$COPY_HOST" ]]; then
-            warning_message "Invalid selection. Exiting script."
-            exit 1
-        fi
-        read -p "Enter the new hostname: " HOSTNAME
-        cp -r "./NixOS/hosts/$COPY_HOST" "./NixOS/hosts/$HOSTNAME"
-        info_message "Copied $COPY_HOST to create new host $HOSTNAME"
-        ;;
-    3) # Rename an existing hostname
-        echo -e "${YELLOW}Choose an existing host to rename:${RESET}"
-        echo "$AVAILABLE_HOSTS" | nl
-        read -p "Enter the number corresponding to the host to rename: " rename_host_number
-        RENAME_HOST=$(echo "$AVAILABLE_HOSTS" | sed -n "${rename_host_number}p")
-        if [[ -z "$RENAME_HOST" ]]; then
-            warning_message "Invalid selection. Exiting script."
-            exit 1
-        fi
-        read -p "Enter the new hostname: " HOSTNAME
-        mv "./NixOS/hosts/$RENAME_HOST" "./NixOS/hosts/$HOSTNAME"
-        info_message "Renamed $RENAME_HOST to $HOSTNAME"
-        ;;
-    *) # Invalid input
-        warning_message "Invalid choice. Exiting script."
-        exit 1
-        ;;
-esac
-
-# Section: Hardware Configuration File Handling
-if [[ -f "./NixOS/hosts/$HOSTNAME/hardware-configuration.nix" ]]; then
-    info_message "hardware-configuration.nix already exists in the $HOSTNAME directory."
-else
-    echo -e "${YELLOW}Do you want to copy the current hardware-configuration.nix to $HOSTNAME?${RESET}"
-    echo -e "${GREEN}1) Yes${RESET}"
-    echo -e "${RED}2) No${RESET}"
-    read -p "Enter your choice (1 or 2): " copy_hardware_choice
-
-    if [[ $copy_hardware_choice -eq 1 ]]; then
-        if [[ -f "/mnt/etc/nixos/hardware-configuration.nix" ]]; then
-            cp /mnt/etc/nixos/hardware-configuration.nix "./NixOS/hosts/$HOSTNAME/"
-            info_message "Copied hardware-configuration.nix to ./NixOS/hosts/$HOSTNAME/"
-        else
-            warning_message "Source hardware-configuration.nix not found at /mnt/etc/nixos/. Please generate it first."
-            echo -e "${YELLOW}Do you want to generate hardware-configuration.nix now?${RESET}"
-            echo -e "${GREEN}1) Yes${RESET}"
-            echo -e "${RED}2) No${RESET}"
-            read -p "Enter your choice (1 or 2): " generate_config_choice
-
-            if [[ $generate_config_choice -eq 1 ]]; then
-                info_message "Generating hardware-configuration.nix..."
-                sudo nixos-generate-config --root /mnt
-                if [[ -f "/mnt/etc/nixos/hardware-configuration.nix" ]]; then
-                    cp /mnt/etc/nixos/hardware-configuration.nix "./NixOS/hosts/$HOSTNAME/"
-                    info_message "Copied hardware-configuration.nix to ./NixOS/hosts/$HOSTNAME/"
-                else
-                    warning_message "Failed to generate hardware-configuration.nix. Please check your system."
-                fi
-            else
-                echo -e "${RED}Skipping hardware-configuration.nix generation...${RESET}"
-            fi
-        fi
-    else
-        echo -e "${RED}Skipping hardware-configuration.nix copy...${RESET}"
-    fi
-fi
-
-# Prompt to check nix channels
-echo -e "${YELLOW}Do you want to check nix channels?${RESET}"
-echo -e "${GREEN}1) Yes${RESET}"
-echo -e "${RED}2) No${RESET}"
-read -p "Enter your choice (1 or 2): " nix_channel_choice
-
-if [[ $nix_channel_choice -eq 1 ]]; then
-    info_message "Listing nix channels..."
-    nix-channel --list
-elif [[ $nix_channel_choice -eq 2 ]]; then
-    echo -e "${RED}Skipping nix-channel check...${RESET}"
-else
-    warning_message "Invalid choice. Exiting script."
-    exit 1
-fi
-
 # Prompt the user to check block devices and partitions
 echo -e "${YELLOW}Do you want to inspect block devices and partition table?${RESET}"
 echo -e "${GREEN}1) Yes${RESET}"
@@ -188,11 +73,113 @@ else
     exit 1
 fi
 
-# Check if hardware-configuration.nix exists in the host directory
-if [[ -f "./NixOS/hosts/$HOSTNAME/hardware-configuration.nix" ]]; then
-    info_message "hardware-configuration.nix exists in the $HOSTNAME directory."
+# Section: Hostname Selection or Creation
+info_message "Checking available hosts in ./NixOS/hosts directory..."
+AVAILABLE_HOSTS=$(ls ./NixOS/hosts 2>/dev/null) # List all existing hosts in the ./NixOS/hosts directory
+if [[ -z "$AVAILABLE_HOSTS" ]]; then
+    warning_message "No hosts available in ./NixOS/hosts. You will need to create a new one."
 else
-    warning_message "hardware-configuration.nix does not exist in the $HOSTNAME directory!"
+    echo -e "${YELLOW}Available hosts:${RESET}"
+    echo "$AVAILABLE_HOSTS" | nl # Print the hosts as a numbered list
+fi
+
+while true; do
+    # Prompt user to select or manage hostnames
+    echo -e "${YELLOW}Do you want to:${RESET}"
+    echo -e "${GREEN}1) Select an existing hostname${RESET}"
+    echo -e "${BLUE}2) Create a new hostname by copying and renaming an existing one${RESET}"
+    echo -e "${CYAN}3) Rename an existing hostname${RESET}"
+    read -p "Enter your choice (1, 2, or 3): " hostname_choice
+
+    case $hostname_choice in
+        1) # Select an existing hostname
+            echo -e "${YELLOW}Select a hostname from the list:${RESET}"
+            echo "$AVAILABLE_HOSTS" | nl
+            read -p "Enter the number corresponding to your choice: " selected_host_number
+            HOSTNAME=$(echo "$AVAILABLE_HOSTS" | sed -n "${selected_host_number}p")
+            if [[ -z "$HOSTNAME" ]]; then
+                warning_message "Invalid selection. Please try again."
+            else
+                info_message "Selected hostname: $HOSTNAME"
+                break # Proceed to the next step
+            fi
+            ;;
+        2) # Create a new hostname by copying an existing one
+            echo -e "${YELLOW}Choose an existing host to copy:${RESET}"
+            echo "$AVAILABLE_HOSTS" | nl
+            read -p "Enter the number corresponding to the host to copy: " copy_host_number
+            COPY_HOST=$(echo "$AVAILABLE_HOSTS" | sed -n "${copy_host_number}p")
+            if [[ -z "$COPY_HOST" ]]; then
+                warning_message "Invalid selection. Please try again."
+            else
+                read -p "Enter the new hostname: " HOSTNAME
+                cp -r "./NixOS/hosts/$COPY_HOST" "./NixOS/hosts/$HOSTNAME"
+                info_message "Copied $COPY_HOST to create new host $HOSTNAME"
+            fi
+            ;;
+        3) # Rename an existing hostname
+            echo -e "${YELLOW}Choose an existing host to rename:${RESET}"
+            echo "$AVAILABLE_HOSTS" | nl
+            read -p "Enter the number corresponding to the host to rename: " rename_host_number
+            RENAME_HOST=$(echo "$AVAILABLE_HOSTS" | sed -n "${rename_host_number}p")
+            if [[ -z "$RENAME_HOST" ]]; then
+                warning_message "Invalid selection. Please try again."
+            else
+                read -p "Enter the new hostname: " HOSTNAME
+                mv "./NixOS/hosts/$RENAME_HOST" "./NixOS/hosts/$HOSTNAME"
+                info_message "Renamed $RENAME_HOST to $HOSTNAME"
+            fi
+            ;;
+        *) # Invalid input
+            warning_message "Invalid choice. Please try again."
+            ;;
+    esac
+
+done
+
+# Section: Hardware Configuration File Handling
+if [[ -f "./NixOS/hosts/$HOSTNAME/hardware-configuration.nix" ]]; then
+    info_message "hardware-configuration.nix already exists in the $HOSTNAME directory."
+else
+    while true; do
+        echo -e "${YELLOW}Do you want to copy the current hardware-configuration.nix to $HOSTNAME?${RESET}"
+        echo -e "${GREEN}1) Yes${RESET}"
+        echo -e "${RED}2) No${RESET}"
+        read -p "Enter your choice (1 or 2): " copy_hardware_choice
+
+        if [[ $copy_hardware_choice -eq 1 ]]; then
+            if [[ -f "/mnt/etc/nixos/hardware-configuration.nix" ]]; then
+                cp /mnt/etc/nixos/hardware-configuration.nix "./NixOS/hosts/$HOSTNAME/"
+                info_message "Copied hardware-configuration.nix to ./NixOS/hosts/$HOSTNAME/"
+                break
+            else
+                warning_message "Source hardware-configuration.nix not found at /mnt/etc/nixos/. Please generate it first."
+                echo -e "${YELLOW}Do you want to generate hardware-configuration.nix now?${RESET}"
+                echo -e "${GREEN}1) Yes${RESET}"
+                echo -e "${RED}2) No${RESET}"
+                read -p "Enter your choice (1 or 2): " generate_config_choice
+
+                if [[ $generate_config_choice -eq 1 ]]; then
+                    info_message "Generating hardware-configuration.nix..."
+                    sudo nixos-generate-config --root /mnt
+                    if [[ -f "/mnt/etc/nixos/hardware-configuration.nix" ]]; then
+                        cp /mnt/etc/nixos/hardware-configuration.nix "./NixOS/hosts/$HOSTNAME/"
+                        info_message "Copied hardware-configuration.nix to ./NixOS/hosts/$HOSTNAME/"
+                        break
+                    else
+                        warning_message "Failed to generate hardware-configuration.nix. Please check your system."
+                    fi
+                else
+                    echo -e "${RED}Skipping hardware-configuration.nix generation...${RESET}"
+                fi
+            fi
+        elif [[ $copy_hardware_choice -eq 2 ]]; then
+            echo -e "${RED}Skipping hardware-configuration.nix copy...${RESET}"
+            break
+        else
+            warning_message "Invalid choice. Please try again."
+        fi
+    done
 fi
 
 # Prompt the user to choose between installation or rebuild
@@ -263,22 +250,51 @@ else
 fi
 
 # Prompt to update flake
-echo -e "${YELLOW}Do you want to update flake?${RESET}"
+while true; do
+    echo -e "${YELLOW}Do you want to update flake?${RESET}"
+    echo -e "${GREEN}1) Yes${RESET}"
+    echo -e "${RED}2) No${RESET}"
+    read -p "Enter your choice (1 or 2): " flake_update_choice
+
+    if [[ $flake_update_choice -eq 1 ]]; then
+        if [[ ! -f "./flake.lock" ]]; then
+            warning_message "flake.lock does not exist. This will create a new one."
+            echo -e "${YELLOW}Are you sure you want to proceed with creating a new flake.lock?${RESET}"
+            echo -e "${GREEN}1) Yes${RESET}"
+            echo -e "${RED}2) No${RESET}"
+            read -p "Enter your choice (1 or 2): " create_flake_choice
+
+            if [[ $create_flake_choice -eq 2 ]]; then
+                warning_message "Aborted flake update. Returning to the previous menu."
+                continue
+            fi
+        fi
+        info_message "Updating flake..."
+        # Update flake.nix file and generate flake.lock
+        sudo nix --experimental-features "nix-command flakes" flake update
+        break
+    elif [[ $flake_update_choice -eq 2 ]]; then
+        echo -e "${RED}Skipping flake update...${RESET}"
+        break
+    else
+        warning_message "Invalid choice. Please try again."
+    fi
+done
+
+# Prompt to check nix channels
+echo -e "${YELLOW}Do you want to check nix channels?${RESET}"
 echo -e "${GREEN}1) Yes${RESET}"
 echo -e "${RED}2) No${RESET}"
-read -p "Enter your choice (1 or 2): " flake_update_choice
+read -p "Enter your choice (1 or 2): " nix_channel_choice
 
-if [[ $flake_update_choice -eq 1 ]]; then
-    if [[ ! -f "./flake.lock" ]]; then
-        warning_message "flake.lock does not exist. This will create a new one."
-    fi
-    info_message "Updating flake..."
-# Update flake.nix file and generate flake.lock
-    sudo nix --experimental-features "nix-command flakes" flake update
-elif [[ $flake_update_choice -eq 2 ]]; then
-    echo -e "${RED}Skipping flake update...${RESET}"
+if [[ $nix_channel_choice -eq 1 ]]; then
+    info_message "Listing nix channels..."
+    nix-channel --list
+elif [[ $nix_channel_choice -eq 2 ]]; then
+    echo -e "${RED}Skipping nix-channel check...${RESET}"
 else
-    warning_message "Invalid choice. Skipping flake update."
+    warning_message "Invalid choice. Exiting script."
+    exit 1
 fi
 
 # Execute the chosen action
