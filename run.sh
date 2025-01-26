@@ -202,7 +202,7 @@ fi
 # Prompt the user to choose between installation or rebuild
 echo -e "${YELLOW}Choose an option:${RESET}"
 echo -e "${GREEN}1) Install NixOS (nixos-install)${RESET}"
-echo -e "${BLUE}2) Rebuild NixOS configuration (nixos-rebuild)${RESET}"
+echo -e "${BLUE}2) Rebuild existing NixOS configuration (nixos-rebuild)${RESET}"
 read -p "Enter your choice (1 or 2): " choice
 
 if [[ $choice -eq 1 ]]; then
@@ -242,14 +242,6 @@ else
     exit 1
 fi
 
-# Change the current working directory to /NixOS
-cd NixOS/
-info_message "Redirected to NixOS/"
-
-# Stage changes (e.g., new configuration files) to Git for version tracking
-git add .
-info_message "Added to hardware-configuration.nix git"
-
 # Prompt to clean garbage
 echo -e "${YELLOW}Do you want to clean garbage to free up space?${RESET}"
 echo -e "${GREEN}1) Yes${RESET}"
@@ -265,6 +257,10 @@ elif [[ $clean_choice -eq 2 ]]; then
 else
     warning_message "Invalid choice. Skipping garbage cleaning."
 fi
+
+# Change the current working directory to /NixOS
+cd NixOS/
+info_message "Redirected to NixOS/"
 
 # Prompt to update flake
 while true; do
@@ -314,15 +310,15 @@ else
     exit 1
 fi
 
+# Stage changes (e.g., new configuration files) to Git for version tracking
+git add .
+info_message "Added to new files to git"
+
 # Execute the chosen action
 if [[ $choice -eq 1 ]]; then
     info_message "Executing nixos-install..."
-    sudo nixos-install --flake ./#kabacho
+    sudo nixos-install --flake ./#$HOSTMANE
 elif [[ $choice -eq 2 ]]; then
     info_message "Executing nixos-rebuild ${rebuild_mode}..."
-    sudo nixos-rebuild "$rebuild_mode" --flake ./#kabacho
+    sudo nixos-rebuild "$rebuild_mode" --flake ./#$HOSTMANE
 fi
-
-# Apply Home Manager configuration
-info_message "Applying Home Manager configuration..."
-home-manager switch
