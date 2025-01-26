@@ -154,94 +154,6 @@ while true; do
     esac
 done
 
-# Section: Hardware Configuration File Handling
-if [[ -f "./NixOS/hosts/$HOSTNAME/hardware-configuration.nix" ]]; then
-    info_message "hardware-configuration.nix already exists in the $HOSTNAME directory."
-else
-    while true; do
-        echo -e "${YELLOW}Do you want to copy the current hardware-configuration.nix to $HOSTNAME?${RESET}"
-        echo -e "${GREEN}1) Yes${RESET}"
-        echo -e "${RED}2) No${RESET}"
-        read -p "Enter your choice (1 or 2): " copy_hardware_choice
-
-        if [[ $copy_hardware_choice -eq 1 ]]; then
-            if [[ -f "/mnt/etc/nixos/hardware-configuration.nix" ]]; then
-                cp /mnt/etc/nixos/hardware-configuration.nix "./NixOS/hosts/$HOSTNAME/"
-                info_message "Copied hardware-configuration.nix to ./NixOS/hosts/$HOSTNAME/"
-                break
-            else
-                warning_message "Source hardware-configuration.nix not found at /mnt/etc/nixos/. Please generate it first."
-                echo -e "${YELLOW}Do you want to generate hardware-configuration.nix now?${RESET}"
-                echo -e "${GREEN}1) Yes${RESET}"
-                echo -e "${RED}2) No${RESET}"
-                read -p "Enter your choice (1 or 2): " generate_config_choice
-
-                if [[ $generate_config_choice -eq 1 ]]; then
-                    info_message "Generating hardware-configuration.nix..."
-                    sudo nixos-generate-config --root /mnt
-                    if [[ -f "/mnt/etc/nixos/hardware-configuration.nix" ]]; then
-                        cp /mnt/etc/nixos/hardware-configuration.nix "./NixOS/hosts/$HOSTNAME/"
-                        info_message "Copied hardware-configuration.nix to ./NixOS/hosts/$HOSTNAME/"
-                        break
-                    else
-                        warning_message "Failed to generate hardware-configuration.nix. Please check your system."
-                    fi
-                else
-                    echo -e "${RED}Skipping hardware-configuration.nix generation...${RESET}"
-                fi
-            fi
-        elif [[ $copy_hardware_choice -eq 2 ]]; then
-            echo -e "${RED}Skipping hardware-configuration.nix copy...${RESET}"
-            break
-        else
-            warning_message "Invalid choice. Please try again."
-        fi
-    done
-fi
-
-# Prompt the user to choose between installation or rebuild
-echo -e "${YELLOW}Choose an option:${RESET}"
-echo -e "${GREEN}1) Install NixOS (nixos-install)${RESET}"
-echo -e "${BLUE}2) Rebuild existing NixOS configuration (nixos-rebuild)${RESET}"
-read -p "Enter your choice (1 or 2): " choice
-
-if [[ $choice -eq 1 ]]; then
-    info_message "Running installation flow..."
-# Generate NixOS configuration files for installation
-    sudo nixos-generate-config --root /mnt
-# Copy hardware configuration file from /mnt for installation
-    cp /mnt/etc/nixos/hardware-configuration.nix ./NixOS/hosts/$HOSTNAME/
-elif [[ $choice -eq 2 ]]; then
-    echo -e "${YELLOW}Choose rebuild option:${RESET}"
-    echo -e "${GREEN}1) switch${RESET}"
-    echo -e "${GREEN}2) boot${RESET}"
-    echo -e "${GREEN}3) build${RESET}"
-    read -p "Enter your choice (1, 2, or 3): " rebuild_option
-
-    case $rebuild_option in
-        1)
-            rebuild_mode="switch"
-            ;;
-        2)
-            rebuild_mode="boot"
-            ;;
-        3)
-            rebuild_mode="build"
-            ;;
-        *)
-            warning_message "Invalid rebuild choice. Exiting script."
-            exit 1
-            ;;
-    esac
-
-    info_message "Running rebuild flow with mode: ${rebuild_mode}"
-# Copy hardware configuration file for installation
-    cp /etc/nixos/hardware-configuration.nix ./NixOS/hosts/$HOSTNAME/
-else
-    warning_message "Invalid choice. Exiting script."
-    exit 1
-fi
-
 # Prompt to clean garbage
 echo -e "${YELLOW}Do you want to clean garbage to free up space?${RESET}"
 echo -e "${GREEN}1) Yes${RESET}"
@@ -287,38 +199,72 @@ while true; do
         sudo nix --experimental-features "nix-command flakes" flake update
         break
     elif [[ $flake_update_choice -eq 2 ]]; then
-        echo -e "${RED}Skipping flake update...${RESET}"
-        break
+        if [[ -f "./flake.lock" ]]; then
+            echo -e "${RED}Skipping flake update...${RESET}"
+        else
+            warning_message "flake.lock does not exist. Please update flake."
+            continue
+        fi
     else
         warning_message "Invalid choice. Please try again."
     fi
 done
 
-# Prompt to check nix channels
-echo -e "${YELLOW}Do you want to check nix channels?${RESET}"
-echo -e "${GREEN}1) Yes${RESET}"
-echo -e "${RED}2) No${RESET}"
-read -p "Enter your choice (1 or 2): " nix_channel_choice
+# Prompt the user to choose between installation or rebuild
+echo -e "${YELLOW}Choose an option:${RESET}"
+echo -e "${GREEN}1) Install NixOS (nixos-install)${RESET}"
+echo -e "${BLUE}2) Rebuild existing NixOS configuration (nixos-rebuild)${RESET}"
+read -p "Enter your choice (1 or 2): " choice
 
-if [[ $nix_channel_choice -eq 1 ]]; then
-    info_message "Listing nix channels..."
-    nix-channel --list
-elif [[ $nix_channel_choice -eq 2 ]]; then
-    echo -e "${RED}Skipping nix-channel check...${RESET}"
+if [[ $choice -eq 1 ]]; then
+    info_message "Running installation flow..."
+# Generate NixOS configuration files for installation
+    sudo nixos-generate-config --root /mnt
+# Copy hardware configuration file from /mnt for installation
+    cp /mnt/etc/nixos/hardware-configuration.nix ./NixOS/hosts/$HOSTNAME/
+# 
+    git add .
+    info_message "Added to new files to git"
+# 
+    info_message "Executing nixos-install..."
+    sudo nixos-install --flake ./#$HOSTMANE
+elif [[ $choice -eq 2 ]]; then
+    echo -e "${YELLOW}Choose rebuild option:${RESET}"
+    echo -e "${GREEN}1) switch${RESET}"
+    echo -e "${GREEN}2) boot${RESET}"
+    echo -e "${GREEN}3) build${RESET}"
+    read -p "Enter your choice (1, 2, or 3): " rebuild_option
+
+    case $rebuild_option in
+        1)
+            rebuild_mode="switch"
+            ;;
+        2)
+            rebuild_mode="boot"
+            ;;
+        3)
+            rebuild_mode="build"
+            ;;
+        *)
+            warning_message "Invalid rebuild choice. Exiting script."
+            exit 1
+            ;;
+    esac
+
+    info_message "Running rebuild flow with mode: ${rebuild_mode}"
+# Copy hardware configuration file for installation
+    cp /etc/nixos/hardware-configuration.nix ./NixOS/hosts/$HOSTNAME/
+# 
+    git add .
+    info_message "Added to new files to git"
+#
+    info_message "Executing nixos-rebuild ${rebuild_mode}..."
+    sudo nixos-rebuild "$rebuild_mode" --flake ./#$HOSTMANE
 else
     warning_message "Invalid choice. Exiting script."
     exit 1
 fi
 
-# Stage changes (e.g., new configuration files) to Git for version tracking
-git add .
-info_message "Added to new files to git"
-
-# Execute the chosen action
-if [[ $choice -eq 1 ]]; then
-    info_message "Executing nixos-install..."
-    sudo nixos-install --flake ./#$HOSTMANE
-elif [[ $choice -eq 2 ]]; then
-    info_message "Executing nixos-rebuild ${rebuild_mode}..."
-    sudo nixos-rebuild "$rebuild_mode" --flake ./#$HOSTMANE
-fi
+# Apply Home Manager configuration
+info_message "Applying Home Manager configuration..."
+home-manager switch
