@@ -212,7 +212,7 @@ if [[ $choice -eq 1 ]]; then
     cp /mnt/etc/nixos/hardware-configuration.nix ./hosts/$HOSTNAME/
 # 
     git add .
-    info_message "Added to new files to git"
+    info_message "Added new files to git"
 # 
     info_message "Executing nixos-install..."
     sudo nixos-install --flake ./#$HOSTNAME
@@ -244,15 +244,14 @@ elif [[ $choice -eq 2 ]]; then
     cp /etc/nixos/hardware-configuration.nix ./hosts/$HOSTNAME/
 # 
     git add .
-    info_message "Added to new files to git"
+    info_message "Added new files to git"
 #
     info_message "Executing nixos-rebuild ${rebuild_mode}..."
     sudo nixos-rebuild "$rebuild_mode" --flake ./#$HOSTNAME
+# Apply Home Manager configuration
+    info_message "Applying Home Manager configuration..."
+    home-manager switch
 else
     warning_message "Invalid choice. Exiting script."
     exit 1
 fi
-
-# Apply Home Manager configuration
-info_message "Applying Home Manager configuration..."
-home-manager switch
