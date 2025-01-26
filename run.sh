@@ -215,7 +215,7 @@ if [[ $choice -eq 1 ]]; then
     info_message "Added to new files to git"
 # 
     info_message "Executing nixos-install..."
-    sudo nixos-install --flake ./#$HOSTMANE
+    sudo nixos-install --flake ./#$HOSTNAME
 elif [[ $choice -eq 2 ]]; then
     echo -e "${YELLOW}Choose rebuild option:${RESET}"
     echo -e "${GREEN}1) switch${RESET}"
@@ -247,7 +247,7 @@ elif [[ $choice -eq 2 ]]; then
     info_message "Added to new files to git"
 #
     info_message "Executing nixos-rebuild ${rebuild_mode}..."
-    sudo nixos-rebuild "$rebuild_mode" --flake ./#$HOSTMANE
+    sudo nixos-rebuild "$rebuild_mode" --flake ./#$HOSTNAME
 else
     warning_message "Invalid choice. Exiting script."
     exit 1
