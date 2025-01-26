@@ -182,18 +182,6 @@ while true; do
     read -p "Enter your choice (1 or 2): " flake_update_choice
 
     if [[ $flake_update_choice -eq 1 ]]; then
-        if [[ ! -f "./flake.lock" ]]; then
-            warning_message "flake.lock does not exist. This will create a new one."
-            echo -e "${YELLOW}Are you sure you want to proceed with creating a new flake.lock?${RESET}"
-            echo -e "${GREEN}1) Yes${RESET}"
-            echo -e "${RED}2) No${RESET}"
-            read -p "Enter your choice (1 or 2): " create_flake_choice
-
-            if [[ $create_flake_choice -eq 2 ]]; then
-                warning_message "Aborted flake update. Returning to the previous menu."
-                continue
-            fi
-        fi
         info_message "Updating flake..."
         # Update flake.nix file and generate flake.lock
         sudo nix --experimental-features "nix-command flakes" flake update
@@ -221,7 +209,7 @@ if [[ $choice -eq 1 ]]; then
 # Generate NixOS configuration files for installation
     sudo nixos-generate-config --root /mnt
 # Copy hardware configuration file from /mnt for installation
-    cp /mnt/etc/nixos/hardware-configuration.nix ./NixOS/hosts/$HOSTNAME/
+    cp /mnt/etc/nixos/hardware-configuration.nix ./hosts/$HOSTNAME/
 # 
     git add .
     info_message "Added to new files to git"
@@ -253,7 +241,7 @@ elif [[ $choice -eq 2 ]]; then
 
     info_message "Running rebuild flow with mode: ${rebuild_mode}"
 # Copy hardware configuration file for installation
-    cp /etc/nixos/hardware-configuration.nix ./NixOS/hosts/$HOSTNAME/
+    cp /etc/nixos/hardware-configuration.nix ./hosts/$HOSTNAME/
 # 
     git add .
     info_message "Added to new files to git"
