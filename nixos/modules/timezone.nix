@@ -1,3 +1,3 @@
 {
-  time.timeZone = "Europe/Kiev";
+  time.timeZone = "Europe/Kyiv";
 }

@@ -216,8 +216,8 @@ if [[ $choice -eq 1 ]]; then
 # 
     info_message "Executing nixos-install..."
     sudo nixos-install --flake ./#$HOSTNAME
-    info_message "Do not forget to clone once more repository and run"
-    warning_message "sudo home-manager switch --flake ./#$HOSTNAME"
+    info_message "Do not forget to clone once more repository and run \n 
+    sudo home-manager switch --flake ./#$HOSTNAME"
 elif [[ $choice -eq 2 ]]; then
     echo -e "${YELLOW}Choose rebuild option:${RESET}"
     echo -e "${GREEN}1) switch${RESET}"
@@ -252,7 +252,7 @@ elif [[ $choice -eq 2 ]]; then
     sudo nixos-rebuild "$rebuild_mode" --flake ./#$HOSTNAME
 # Apply Home Manager configuration
     info_message "Applying Home Manager configuration..."
-    sudo home-manager switch --flake ./#$HOSTNAME
+    sudo home-manager switch --flake ./#$USER
 else
     warning_message "Invalid choice. Exiting script."
     exit 1
