@@ -17,7 +17,7 @@
   outputs = { self, nixpkgs, home-manager, ... }@inputs: let
     system = "x86_64-linux";
     homeStateVersion = "24.11";
-    user = " ";
+    user = "user";
     hosts = [
       { hostname = "kabacho"; stateVersion = "24.11"; }
     ];

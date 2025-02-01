@@ -6,7 +6,7 @@
     users.${user} = {
       isNormalUser = true;
       extraGroups = [ "wheel" "networkmanager" ];
-      initialPassword = " ";
+      initialPassword = "password";
     };
   };
 
