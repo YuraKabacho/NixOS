@@ -84,35 +84,14 @@ if [[ -n "$USER_LINE" ]]; then
     if [[ "$change_user" == "y" ]]; then
         read -p "Enter new username: " NEW_USER
         sed -i "s/user = \"$CURRENT_USER\"/user = \"$NEW_USER\"/" "$FLAKE_FILE"
-        info_message "Username changed to ${GREEN}$NEW_USER${RESET} in flake.nix."
+        info_message "Username changed to ${GREEN}$NEW_USER ${CYAN}in flake.nix.${RESET}"
     else
         NEW_USER="$CURRENT_USER"
     fi
 else
     read -p "No username found in flake.nix. Enter a new username: " NEW_USER
     sed -i "/let/a \    user = \"$NEW_USER\";" "$FLAKE_FILE"
-    info_message "Username set to ${GREEN}$NEW_USER${RESET} in flake.nix."
-fi
-
-# Set password for the user
-PASSWD="./NixOS/nixos/modules/user.nix"
-PASSWD_LINE=$(grep -E "^[[:space:]]*initialPassword[[:space:]]*=" "$PASSWD")
-
-if [[ -n "$PASSWD_LINE" ]]; then
-    CURRENT_PASSWD=$(echo "$PASSWD_LINE" | awk -F '"' '{print $2}')
-    echo -e "${YELLOW}Current passwd: ${GREEN}$CURRENT_PASSWD${RESET}"
-    read -p "Do you want to set password? (y/n): " change_passwd
-    if [[ "$change_passwd" == "y" ]]; then
-        read -p "Enter new password: " NEW_PASSWD
-        sed -i "s/initialPassword = \"$CURRENT_PASSWD\"/initialPassword = \"$NEW_PASSWD\"/" "$PASSWD"
-        info_message "Password changed."
-    else
-        NEW_PASSWD="$CURRENT_PASSWD"
-    fi
-else
-    read -p "No password found for user $USER. Enter a new password: " NEW_PASSWD
-    sed -i "/let/a \    initialPassword = \"$NEW_PASSWD\";" "$PASSWD"
-    info_message "Password changed."
+    info_message "Username changed to ${GREEN}$NEW_USER ${CYAN}in flake.nix.${RESET}"
 fi
 
 # Section: Hostname Selection or Creation
@@ -258,6 +237,10 @@ if [[ $choice -eq 1 ]]; then
 # 
     info_message "Executing nixos-install..."
     sudo nixos-install --flake ./#$HOSTNAME
+#
+    info_message "Setting password for $USER."
+    sudo passwd "$USER"
+#
     info_message "Do not forget to clone once more repository and run \n 
     home-manager switch --flake ./#$USER"
 elif [[ $choice -eq 2 ]]; then
@@ -292,6 +275,9 @@ elif [[ $choice -eq 2 ]]; then
 #
     info_message "Executing nixos-rebuild ${rebuild_mode}..."
     sudo nixos-rebuild "$rebuild_mode" --flake ./#$HOSTNAME
+#
+    info_message "Setting password for $USER."
+    sudo passwd "$USER"
 # Apply Home Manager configuration
     info_message "Applying Home Manager configuration..."
     home-manager switch --flake ./#$USER
