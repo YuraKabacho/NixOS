@@ -73,6 +73,32 @@ else
     exit 1
 fi
 
+# Extract current username from flake.nix
+CURRENT_USER=$(grep -Po 'user\s*=\s*"\K[^"]+' "$FLAKE_FILE")
+
+if [[ -z "$CURRENT_USER" ]]; then
+    info_message "No user is set in flake.nix. You need to create one."
+    read -p "Enter a new username: " NEW_USER
+else
+    info_message "Current user found in flake.nix: $CURRENT_USER"
+    read -p "Do you want to change it? (y/n): " change_choice
+    if [[ "$change_choice" == "y" ]]; then
+        read -p "Enter a new username: " NEW_USER
+    else
+        NEW_USER="$CURRENT_USER"
+    fi
+fi
+
+# Update or add the user in flake.nix
+if grep -q 'user\s*=' "$FLAKE_FILE"; then
+    sed -i "s/user\s*=\s*\"[^"]*\"/user = \"$NEW_USER\"/" "$FLAKE_FILE"
+else
+    sed -i "/let/a \
+    user = \"$NEW_USER\";" "$FLAKE_FILE"
+fi
+
+info_message "flake.nix updated with user: $NEW_USER"
+
 # Section: Hostname Selection or Creation
 info_message "Checking available hosts in ./NixOS/hosts directory..."
 AVAILABLE_HOSTS=$(ls ./NixOS/hosts 2>/dev/null) # List all existing hosts in the ./NixOS/hosts directory
@@ -217,7 +243,7 @@ if [[ $choice -eq 1 ]]; then
     info_message "Executing nixos-install..."
     sudo nixos-install --flake ./#$HOSTNAME
     info_message "Do not forget to clone once more repository and run \n 
-    sudo home-manager switch --flake ./#$HOSTNAME"
+    home-manager switch --flake ./#$USER"
 elif [[ $choice -eq 2 ]]; then
     echo -e "${YELLOW}Choose rebuild option:${RESET}"
     echo -e "${GREEN}1) switch${RESET}"
@@ -252,7 +278,7 @@ elif [[ $choice -eq 2 ]]; then
     sudo nixos-rebuild "$rebuild_mode" --flake ./#$HOSTNAME
 # Apply Home Manager configuration
     info_message "Applying Home Manager configuration..."
-    sudo home-manager switch --flake ./#$USER
+    home-manager switch --flake ./#$USER
 else
     warning_message "Invalid choice. Exiting script."
     exit 1
