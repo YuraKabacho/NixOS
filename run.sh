@@ -95,8 +95,25 @@ else
 fi
 
 # Set password for the user
-info_message "Setting password for $NEW_USER."
-sudo passwd "$NEW_USER"
+PASSWD="./NixOS/nixos/modules/user.nix"
+PASSWD_LINE=$(grep -E "^[[:space:]]*initialPassword[[:space:]]*=" "$PASSWD")
+
+if [[ -n "$PASSWD_LINE" ]]; then
+    CURRENT_PASSWD=$(echo "$PASSWD_LINE" | awk -F '"' '{print $2}')
+    echo -e "${YELLOW}Current passwd: ${GREEN}$CURRENT_PASSWD${RESET}"
+    read -p "Do you want to set password? (y/n): " change_passwd
+    if [[ "$change_passwd" == "y" ]]; then
+        read -p "Enter new password: " NEW_PASSWD
+        sed -i "s/initialPassword = \"$CURRENT_PASSWD\"/initialPassword = \"$NEW_PASSWD\"/" "$PASSWD"
+        info_message "Password changed to $NEW_PASSWD."
+    else
+        NEW_PASSWD="$CURRENT_PASSWD"
+    fi
+else
+    read -p "No password found for user $USER. Enter a new password: " NEW_PASSWD
+    sed -i "/let/a \    initialPassword = \"$NEW_PASSWD\";" "$PASSWD"
+    info_message "Password changed to $NEW_PASSWD."
+fi
 
 # Section: Hostname Selection or Creation
 info_message "Checking available hosts in ./NixOS/hosts directory..."
