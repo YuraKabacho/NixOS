@@ -101,7 +101,7 @@ PASSWD_LINE=$(grep -E "^[[:space:]]*initialPassword[[:space:]]*=" "$PASSWD")
 if [[ -n "$PASSWD_LINE" ]]; then
     CURRENT_PASSWD=$(echo "$PASSWD_LINE" | awk -F '"' '{print $2}')
     echo -e "${YELLOW}Current passwd: ${GREEN}$CURRENT_PASSWD${RESET}"
-    read -p "Do you want to set password? (y/n): " change_passwd
+    read -p "Do you want to set new password? (y/n): " change_passwd
     if [[ "$change_passwd" == "y" ]]; then
         stty -echo
         read -p "Enter new password: " NEW_PASSWD
@@ -117,6 +117,7 @@ else
     stty echo
     sed -i "/let/a \    initialPassword = \"$NEW_PASSWD\";" "$PASSWD"
     info_message "Password changed."
+fi
 
 # Section: Hostname Selection or Creation
 info_message "Checking available hosts in ./NixOS/hosts directory..."
@@ -147,6 +148,7 @@ while true; do
                 warning_message "Invalid selection. Please try again."
             else
                 info_message "Selected hostname: $HOSTNAME"
+                sed -i "s/hostname = \" \"/hostname = \"$HOSTNAME\"/" .NixOS/flake.nix
                 break # Proceed to the next step
             fi
             ;;
