@@ -74,7 +74,7 @@ else
 fi
 
 # Extract the username from flake.nix
-FLAKE_FILE="flake.nix"
+FLAKE_FILE="./NixOS/flake.nix"
 USER_LINE=$(grep -E "^[[:space:]]*user[[:space:]]*=" "$FLAKE_FILE")
 
 if [[ -n "$USER_LINE" ]]; then
