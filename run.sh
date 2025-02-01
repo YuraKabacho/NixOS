@@ -73,31 +73,30 @@ else
     exit 1
 fi
 
-# Extract current username from flake.nix
-CURRENT_USER=$(grep -Po 'user\s*=\s*"\K[^"]+' "$FLAKE_FILE")
+# Extract the username from flake.nix
+FLAKE_FILE="flake.nix"
+USER_LINE=$(grep -E "^[[:space:]]*user[[:space:]]*=" "$FLAKE_FILE")
 
-if [[ -z "$CURRENT_USER" ]]; then
-    info_message "No user is set in flake.nix. You need to create one."
-    read -p "Enter a new username: " NEW_USER
-else
-    info_message "Current user found in flake.nix: $CURRENT_USER"
-    read -p "Do you want to change it? (y/n): " change_choice
-    if [[ "$change_choice" == "y" ]]; then
-        read -p "Enter a new username: " NEW_USER
+if [[ -n "$USER_LINE" ]]; then
+    CURRENT_USER=$(echo "$USER_LINE" | awk -F '"' '{print $2}')
+    echo -e "${YELLOW}Current username in flake.nix: ${GREEN}$CURRENT_USER${RESET}"
+    read -p "Do you want to change the username? (y/n): " change_user
+    if [[ "$change_user" == "y" ]]; then
+        read -p "Enter new username: " NEW_USER
+        sed -i "s/user = \"$CURRENT_USER\"/user = \"$NEW_USER\"/" "$FLAKE_FILE"
+        info_message "Username changed to $NEW_USER in flake.nix."
     else
         NEW_USER="$CURRENT_USER"
     fi
-fi
-
-# Update or add the user in flake.nix
-if grep -q 'user\s*=' "$FLAKE_FILE"; then
-    sed -i "s/user\s*=\s*\"[^"]*\"/user = \"$NEW_USER\"/" "$FLAKE_FILE"
 else
-    sed -i "/let/a \
-    user = \"$NEW_USER\";" "$FLAKE_FILE"
+    read -p "No username found in flake.nix. Enter a new username: " NEW_USER
+    sed -i "/let/a \    user = \"$NEW_USER\";" "$FLAKE_FILE"
+    info_message "Username set to $NEW_USER in flake.nix."
 fi
 
-info_message "flake.nix updated with user: $NEW_USER"
+# Set password for the user
+info_message "Setting password for $NEW_USER."
+sudo passwd "$NEW_USER"
 
 # Section: Hostname Selection or Creation
 info_message "Checking available hosts in ./NixOS/hosts directory..."
