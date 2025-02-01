@@ -84,14 +84,14 @@ if [[ -n "$USER_LINE" ]]; then
     if [[ "$change_user" == "y" ]]; then
         read -p "Enter new username: " NEW_USER
         sed -i "s/user = \"$CURRENT_USER\"/user = \"$NEW_USER\"/" "$FLAKE_FILE"
-        info_message "Username changed to $NEW_USER in flake.nix."
+        info_message "Username changed to ${GREEN}$NEW_USER${RESET} in flake.nix."
     else
         NEW_USER="$CURRENT_USER"
     fi
 else
     read -p "No username found in flake.nix. Enter a new username: " NEW_USER
     sed -i "/let/a \    user = \"$NEW_USER\";" "$FLAKE_FILE"
-    info_message "Username set to $NEW_USER in flake.nix."
+    info_message "Username set to ${GREEN}$NEW_USER${RESET} in flake.nix."
 fi
 
 # Set password for the user
@@ -105,14 +105,14 @@ if [[ -n "$PASSWD_LINE" ]]; then
     if [[ "$change_passwd" == "y" ]]; then
         read -p "Enter new password: " NEW_PASSWD
         sed -i "s/initialPassword = \"$CURRENT_PASSWD\"/initialPassword = \"$NEW_PASSWD\"/" "$PASSWD"
-        info_message "Password changed to $NEW_PASSWD."
+        info_message "Password changed."
     else
         NEW_PASSWD="$CURRENT_PASSWD"
     fi
 else
     read -p "No password found for user $USER. Enter a new password: " NEW_PASSWD
     sed -i "/let/a \    initialPassword = \"$NEW_PASSWD\";" "$PASSWD"
-    info_message "Password changed to $NEW_PASSWD."
+    info_message "Password changed."
 fi
 
 # Section: Hostname Selection or Creation
