@@ -94,6 +94,30 @@ else
     info_message "Username changed to ${GREEN}$NEW_USER ${CYAN}in flake.nix.${RESET}"
 fi
 
+# Set password for the user
+PASSWD="./NixOS/nixos/modules/user.nix"
+PASSWD_LINE=$(grep -E "^[[:space:]]*initialPassword[[:space:]]*=" "$PASSWD")
+
+if [[ -n "$PASSWD_LINE" ]]; then
+    CURRENT_PASSWD=$(echo "$PASSWD_LINE" | awk -F '"' '{print $2}')
+    echo -e "${YELLOW}Current passwd: ${GREEN}$CURRENT_PASSWD${RESET}"
+    read -p "Do you want to set password? (y/n): " change_passwd
+    if [[ "$change_passwd" == "y" ]]; then
+        stty -echo
+        read -p "Enter new password: " NEW_PASSWD
+        stty echo
+        sed -i "s/initialPassword = \"$CURRENT_PASSWD\"/initialPassword = \"$NEW_PASSWD\"/" "$PASSWD"
+        info_message "Password changed."
+    else
+        NEW_PASSWD="$CURRENT_PASSWD"
+    fi
+else
+    stty -echo
+    read -p "No password found for user $NEW_USER. Enter a new password: " NEW_PASSWD
+    stty echo
+    sed -i "/let/a \    initialPassword = \"$NEW_PASSWD\";" "$PASSWD"
+    info_message "Password changed."
+
 # Section: Hostname Selection or Creation
 info_message "Checking available hosts in ./NixOS/hosts directory..."
 AVAILABLE_HOSTS=$(ls ./NixOS/hosts 2>/dev/null) # List all existing hosts in the ./NixOS/hosts directory
@@ -238,11 +262,8 @@ if [[ $choice -eq 1 ]]; then
     info_message "Executing nixos-install..."
     sudo nixos-install --flake ./#$HOSTNAME
 #
-    info_message "Setting password for $NEW_USER."
-    sudo passwd "$NEW_USER"
-#
     info_message "Do not forget to clone once more repository and run \n 
-    home-manager switch --flake ./#$NEW_USER"
+    home-manager switch --flake ./#${GREEN}$NEW_USER${RESET}"
 elif [[ $choice -eq 2 ]]; then
     echo -e "${YELLOW}Choose rebuild option:${RESET}"
     echo -e "${GREEN}1) switch${RESET}"
@@ -275,12 +296,9 @@ elif [[ $choice -eq 2 ]]; then
 #
     info_message "Executing nixos-rebuild ${rebuild_mode}..."
     sudo nixos-rebuild "$rebuild_mode" --flake ./#$HOSTNAME
-#
-    info_message "Setting password for $NEW_USER."
-    sudo passwd "$NEW_USER"
 # Apply Home Manager configuration
-    info_message "Applying Home Manager configuration..."
-    home-manager switch --flake ./#$NEW_USER
+    info_message "Applying Home Manager configuration fot ${GREEN}$NEW_USER${RESET}..."
+    home-manager switch --flake ./#${GREEN}$NEW_USER${RESET}
 else
     warning_message "Invalid choice. Exiting script."
     exit 1
