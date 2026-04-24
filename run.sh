@@ -359,5 +359,5 @@ elif [ "$choice" == "2" ]; then
     home-manager switch --flake ./#$NEW_USER
 fi
 
-clear
+# clear
 echo "All done. Have a great NixOS experience!"
