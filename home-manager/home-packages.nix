@@ -19,6 +19,7 @@
     ffmpeg
     ffmpegthumbnailer
     fzf
+    git
     git-graph
     grimblast
     htop

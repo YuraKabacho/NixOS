@@ -74,7 +74,7 @@ else
 fi
 
 # Extract the username from flake.nix
-FLAKE_FILE="./NixOS/flake.nix"
+FLAKE_FILE="./flake.nix"
 USER_LINE=$(grep -E "^[[:space:]]*user[[:space:]]*=" "$FLAKE_FILE")
 
 if [[ -n "$USER_LINE" ]]; then
@@ -148,7 +148,7 @@ while true; do
                 warning_message "Invalid selection. Please try again."
             else
                 info_message "Selected hostname: $HOSTNAME"
-                sed -i "s/hostname = \" \"/hostname = \"$HOSTNAME\"/" .NixOS/flake.nix
+                sed -i "s/hostname = \" \"/hostname = \"$HOSTNAME\"/" "$FLAKE_FILE"
                 break # Proceed to the next step
             fi
             ;;
@@ -299,7 +299,7 @@ elif [[ $choice -eq 2 ]]; then
     info_message "Executing nixos-rebuild ${rebuild_mode}..."
     sudo nixos-rebuild "$rebuild_mode" --flake ./#$HOSTNAME
 # Apply Home Manager configuration
-    info_message "Applying Home Manager configuration fot ${GREEN}$NEW_USER${RESET}..."
+    info_message "Applying Home Manager configuration for ${GREEN}$NEW_USER${RESET}..."
     home-manager switch --flake ./#${GREEN}$NEW_USER${RESET}
 else
     warning_message "Invalid choice. Exiting script."
