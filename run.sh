@@ -130,6 +130,14 @@ else
 fi
 
 while true; do
+    # Refresh the list on every iteration
+    AVAILABLE_HOSTS=$(ls ./NixOS/hosts 2>/dev/null)
+    if [[ -z "$AVAILABLE_HOSTS" ]]; then
+        warning_message "No hosts available in ./NixOS/hosts."
+    else
+        echo -e "${YELLOW}Available hosts:${RESET}"
+        echo "$AVAILABLE_HOSTS" | nl
+    fi
     # Prompt user to select or manage hostnames
     echo -e "${YELLOW}Do you want to:${RESET}"
     echo -e "${GREEN}1) Select an existing hostname${RESET}"
@@ -148,7 +156,7 @@ while true; do
                 warning_message "Invalid selection. Please try again."
             else
                 info_message "Selected hostname: $HOSTNAME"
-                sed -i "s/hostname = \".*\";/hostname = \"$HOSTNAME\";/" "$FLAKE_FILE"
+                sed -i "s/\(hostname = \"\)[^\"]*\(\"\)/\1$HOSTNAME\2/" "$FLAKE_FILE"
                 break # Proceed to the next step
             fi
             ;;
