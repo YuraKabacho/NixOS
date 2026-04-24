@@ -9,6 +9,8 @@ if ! command -v dialog &> /dev/null; then
     exit
 fi
 
+export DIALOGRC="$PWD/.dialogrc"   # or wherever you place it
+
 # ------------------------------------------------------------
 # Paths
 # ------------------------------------------------------------
