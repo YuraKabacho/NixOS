@@ -148,7 +148,7 @@ while true; do
                 warning_message "Invalid selection. Please try again."
             else
                 info_message "Selected hostname: $HOSTNAME"
-                sed -i "s/hostname = \" \"/hostname = \"$HOSTNAME\"/" "$FLAKE_FILE"
+                sed -i "s/hostname = \".*\";/hostname = \"$HOSTNAME\";/" "$FLAKE_FILE"
                 break # Proceed to the next step
             fi
             ;;
