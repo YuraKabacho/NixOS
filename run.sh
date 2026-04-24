@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # ------------------------------------------------------------
 # Check for dialog – install it if missing (NixOS live ISO)
@@ -32,19 +32,24 @@ function msg_ok() {
     dialog --backtitle "NixOS Installer" --msgbox "$1" 6 50
 }
 
+# -------------------------------------------------------------------
+# _dialog - wrapper that captures stdout, sends UI (stderr) to terminal
+# -------------------------------------------------------------------
+_dialog() {
+    dialog --stdout --backtitle "NixOS Installer" "$@" 2>/dev/tty
+}
+
 # ------------------------------------------------------------
 # 1. Disk partitioning (disko)
 # ------------------------------------------------------------
-dialog --backtitle "NixOS Installer" --yesno "Do you want to run disko for disk partitioning?" 7 50
+_dialog --yesno "Do you want to run disko for disk partitioning?" 7 50
 disko_choice=$?
 if [ $disko_choice -eq 0 ]; then
     # Choose modes using a checklist
-    modes=$(dialog --backtitle "NixOS Installer" \
-        --checklist "Select disko modes (use SPACE to select):" 15 50 3 \
+    modes=$(_dialog --checklist "Select disko modes (use SPACE to select):" 15 50 3 \
         1 "destroy" off \
         2 "format" off \
-        3 "mount" off \
-        --stdout 2>&1 >/dev/tty)
+        3 "mount" off)
 
     # If user pressed Cancel, skip
     if [ $? -ne 0 ]; then
@@ -54,9 +59,9 @@ if [ $disko_choice -eq 0 ]; then
         disko_mode=""
         for m in $modes; do
             case $m in
-                1) disko_mode+="destroy,";;
-                2) disko_mode+="format,";;
-                3) disko_mode+="mount,";;
+                1) disko_mode+="destroy," ;;
+                2) disko_mode+="format,"  ;;
+                3) disko_mode+="mount,"   ;;
             esac
         done
         disko_mode=${disko_mode%,}
@@ -76,9 +81,8 @@ fi
 # ------------------------------------------------------------
 # 2. Inspect block devices
 # ------------------------------------------------------------
-dialog --backtitle "NixOS Installer" --yesno "Do you want to inspect block devices and partition table?" 7 50
+_dialog --yesno "Do you want to inspect block devices and partition table?" 7 50
 if [ $? -eq 0 ]; then
-    # Display lsblk and fdisk output
     tmpfile=$(mktemp)
     echo "Block devices:" > "$tmpfile"
     lsblk -f >> "$tmpfile" 2>&1
@@ -96,9 +100,9 @@ fi
 USER_LINE=$(grep -E "^[[:space:]]*user[[:space:]]*=" "$FLAKE_FILE")
 if [ -n "$USER_LINE" ]; then
     CURRENT_USER=$(echo "$USER_LINE" | awk -F '"' '{print $2}')
-    dialog --backtitle "NixOS Installer" --yesno "Current username: $CURRENT_USER\n\nDo you want to change it?" 8 50
+    _dialog --yesno "Current username: $CURRENT_USER\n\nDo you want to change it?" 8 50
     if [ $? -eq 0 ]; then
-        NEW_USER=$(dialog --backtitle "NixOS Installer" --inputbox "Enter new username:" 8 40 "$CURRENT_USER" --stdout)
+        NEW_USER=$(_dialog --inputbox "Enter new username:" 8 40 "$CURRENT_USER")
         if [ -n "$NEW_USER" ]; then
             sed -i "s/user = \"$CURRENT_USER\"/user = \"$NEW_USER\"/" "$FLAKE_FILE"
             msg_info "Username changed to $NEW_USER"
@@ -110,7 +114,7 @@ if [ -n "$USER_LINE" ]; then
         NEW_USER="$CURRENT_USER"
     fi
 else
-    NEW_USER=$(dialog --backtitle "NixOS Installer" --inputbox "No username found in flake.nix.\nEnter a new username:" 9 40 --stdout)
+    NEW_USER=$(_dialog --inputbox "No username found in flake.nix.\nEnter a new username:" 9 40)
     if [ -n "$NEW_USER" ]; then
         sed -i "/let/a \    user = \"$NEW_USER\";" "$FLAKE_FILE"
         msg_info "Username set to $NEW_USER"
@@ -126,9 +130,9 @@ fi
 PASSWD_LINE=$(grep -E "^[[:space:]]*initialPassword[[:space:]]*=" "$PASSWD")
 if [ -n "$PASSWD_LINE" ]; then
     CURRENT_PASSWD=$(echo "$PASSWD_LINE" | awk -F '"' '{print $2}')
-    dialog --backtitle "NixOS Installer" --yesno "A password is already set.\nDo you want to change it?" 8 50
+    _dialog --yesno "A password is already set.\nDo you want to change it?" 8 50
     if [ $? -eq 0 ]; then
-        NEW_PASSWD=$(dialog --backtitle "NixOS Installer" --insecure --passwordbox "Enter new password:" 8 40 --stdout)
+        NEW_PASSWD=$(_dialog --insecure --passwordbox "Enter new password:" 8 40)
         if [ -n "$NEW_PASSWD" ]; then
             sed -i "s/initialPassword = \"$CURRENT_PASSWD\"/initialPassword = \"$NEW_PASSWD\"/" "$PASSWD"
             msg_info "Password updated."
@@ -140,7 +144,7 @@ if [ -n "$PASSWD_LINE" ]; then
         NEW_PASSWD="$CURRENT_PASSWD"
     fi
 else
-    NEW_PASSWD=$(dialog --backtitle "NixOS Installer" --insecure --passwordbox "No password found.\nEnter a new password for user $NEW_USER:" 9 40 --stdout)
+    NEW_PASSWD=$(_dialog --insecure --passwordbox "No password found.\nEnter a new password for user $NEW_USER:" 9 40)
     if [ -n "$NEW_PASSWD" ]; then
         sed -i "/let/a \    initialPassword = \"$NEW_PASSWD\";" "$PASSWD"
         msg_info "Password has been set."
@@ -158,28 +162,23 @@ while true; do
     AVAILABLE_HOSTS=($(ls "$HOSTS_DIR" 2>/dev/null))
     if [ ${#AVAILABLE_HOSTS[@]} -eq 0 ]; then
         dialog --backtitle "NixOS Installer" --msgbox "No hosts found in $HOSTS_DIR.\nYou need to create one first." 7 60
-        # Create a default host? For now just inform.
-        # We can create a new host by copying a template? Not implemented yet.
         break
     fi
 
-    # Build menu list: each host gets a tag and description (just the name)
+    # Build menu list
     host_menu_args=()
     for host in "${AVAILABLE_HOSTS[@]}"; do
         host_menu_args+=("$host" "$host")
     done
 
     # Main action menu
-    action=$(dialog --backtitle "NixOS Installer" \
-        --menu "Choose an action for hostnames" 15 60 4 \
+    action=$(_dialog --menu "Choose an action for hostnames" 15 60 4 \
         1 "Select an existing hostname" \
         2 "Create a new hostname (copy existing)" \
         3 "Rename an existing hostname" \
-        4 "Delete an existing hostname" \
-        --stdout 2>&1 >/dev/tty)
+        4 "Delete an existing hostname")
 
     if [ $? -ne 0 ]; then
-        # Cancel/ESC -> break with an error if no hostname selected yet
         if [ -z "$HOSTNAME" ]; then
             msg_error "No hostname selected. Exiting."
             exit 1
@@ -190,26 +189,18 @@ while true; do
 
     case $action in
         1)
-            # Select hostname
-            selected=$(dialog --backtitle "NixOS Installer" \
-                --menu "Select a hostname" 15 60 ${#AVAILABLE_HOSTS[@]} \
-                "${host_menu_args[@]}" \
-                --stdout 2>&1 >/dev/tty)
+            selected=$(_dialog --menu "Select a hostname" 15 60 ${#AVAILABLE_HOSTS[@]} "${host_menu_args[@]}")
             if [ $? -eq 0 ] && [ -n "$selected" ]; then
                 HOSTNAME="$selected"
                 sed -i "s/\(hostname = \"\)[^\"]*\(\"\)/\1$HOSTNAME\2/" "$FLAKE_FILE"
                 msg_ok "Hostname set to $HOSTNAME"
-                break  # hostname selected, exit loop
+                break
             fi
             ;;
         2)
-            # Copy existing host
-            src=$(dialog --backtitle "NixOS Installer" \
-                --menu "Choose a host to copy" 15 60 ${#AVAILABLE_HOSTS[@]} \
-                "${host_menu_args[@]}" \
-                --stdout 2>&1 >/dev/tty)
+            src=$(_dialog --menu "Choose a host to copy" 15 60 ${#AVAILABLE_HOSTS[@]} "${host_menu_args[@]}")
             if [ $? -eq 0 ] && [ -n "$src" ]; then
-                newhost=$(dialog --backtitle "NixOS Installer" --inputbox "Enter new hostname:" 8 40 --stdout)
+                newhost=$(_dialog --inputbox "Enter new hostname:" 8 40)
                 if [ -n "$newhost" ]; then
                     if [ -e "$HOSTS_DIR/$newhost" ]; then
                         msg_error "Host $newhost already exists."
@@ -221,13 +212,9 @@ while true; do
             fi
             ;;
         3)
-            # Rename host
-            src=$(dialog --backtitle "NixOS Installer" \
-                --menu "Choose a host to rename" 15 60 ${#AVAILABLE_HOSTS[@]} \
-                "${host_menu_args[@]}" \
-                --stdout 2>&1 >/dev/tty)
+            src=$(_dialog --menu "Choose a host to rename" 15 60 ${#AVAILABLE_HOSTS[@]} "${host_menu_args[@]}")
             if [ $? -eq 0 ] && [ -n "$src" ]; then
-                newhost=$(dialog --backtitle "NixOS Installer" --inputbox "Enter new hostname:" 8 40 --stdout)
+                newhost=$(_dialog --inputbox "Enter new hostname:" 8 40)
                 if [ -n "$newhost" ]; then
                     if [ -e "$HOSTS_DIR/$newhost" ]; then
                         msg_error "Host $newhost already exists."
@@ -239,13 +226,9 @@ while true; do
             fi
             ;;
         4)
-            # Delete host
-            src=$(dialog --backtitle "NixOS Installer" \
-                --menu "Choose a host to delete" 15 60 ${#AVAILABLE_HOSTS[@]} \
-                "${host_menu_args[@]}" \
-                --stdout 2>&1 >/dev/tty)
+            src=$(_dialog --menu "Choose a host to delete" 15 60 ${#AVAILABLE_HOSTS[@]} "${host_menu_args[@]}")
             if [ $? -eq 0 ] && [ -n "$src" ]; then
-                dialog --backtitle "NixOS Installer" --yesno "Are you sure you want to delete $src?" 7 60
+                _dialog --yesno "Are you sure you want to delete $src?" 7 60
                 if [ $? -eq 0 ]; then
                     rm -rf "$HOSTS_DIR/$src"
                     msg_ok "$src has been deleted."
@@ -263,15 +246,12 @@ done
 CURRENT_VERSION=$(grep -Po 'nixosVersion\s*=\s*"\K[^"]+' "$FLAKE_FILE" 2>/dev/null)
 CURRENT_VERSION=${CURRENT_VERSION:-25.11}
 
-NEW_VERSION=$(dialog --backtitle "NixOS Installer" \
-    --inputbox "Current NixOS version: $CURRENT_VERSION\n\nEnter new version (YY.MM) or press Enter to keep:" 10 60 \
-    "$CURRENT_VERSION" --stdout)
+NEW_VERSION=$(_dialog --inputbox "Current NixOS version: $CURRENT_VERSION\n\nEnter new version (YY.MM) or press Enter to keep:" 10 60 "$CURRENT_VERSION")
 
 if [ -z "$NEW_VERSION" ]; then
     NEW_VERSION="$CURRENT_VERSION"
 fi
 
-# Validate format
 if [[ ! "$NEW_VERSION" =~ ^[0-9]{2}\.[0-9]{2}$ ]]; then
     msg_error "Invalid version format. Keeping $CURRENT_VERSION."
     NEW_VERSION="$CURRENT_VERSION"
@@ -291,7 +271,7 @@ fi
 # ------------------------------------------------------------
 # 7. Garbage collection
 # ------------------------------------------------------------
-dialog --backtitle "NixOS Installer" --yesno "Do you want to run garbage collection to free up space?" 7 60
+_dialog --yesno "Do you want to run garbage collection to free up space?" 7 60
 if [ $? -eq 0 ]; then
     msg_info "Cleaning up garbage..."
     sudo nix-collect-garbage
@@ -309,11 +289,9 @@ msg_info "Working directory: $(pwd)"
 # 9. Flake update
 # ------------------------------------------------------------
 while true; do
-    update_choice=$(dialog --backtitle "NixOS Installer" \
-        --menu "Do you want to update the flake lockfile?" 12 60 2 \
+    update_choice=$(_dialog --menu "Do you want to update the flake lockfile?" 12 60 2 \
         1 "Yes" \
-        2 "No" \
-        --stdout 2>&1 >/dev/tty)
+        2 "No")
 
     if [ $? -ne 0 ]; then
         msg_error "Cancelled. Exiting."
@@ -337,11 +315,9 @@ done
 # ------------------------------------------------------------
 # 10. Install or rebuild
 # ------------------------------------------------------------
-choice=$(dialog --backtitle "NixOS Installer" \
-    --menu "Choose what to do" 12 60 2 \
+choice=$(_dialog --menu "Choose what to do" 12 60 2 \
     1 "Install NixOS (nixos-install)" \
-    2 "Rebuild existing NixOS configuration (nixos-rebuild)" \
-    --stdout 2>&1 >/dev/tty)
+    2 "Rebuild existing NixOS configuration (nixos-rebuild)")
 
 if [ $? -ne 0 ]; then
     msg_error "No choice made. Exiting."
@@ -349,7 +325,6 @@ if [ $? -ne 0 ]; then
 fi
 
 if [ "$choice" == "1" ]; then
-    # Installation flow
     clear
     echo "Running installation..."
     sudo nixos-generate-config --root /mnt
@@ -360,19 +335,16 @@ if [ "$choice" == "1" ]; then
     echo -e "\n\033[1;36mInstallation complete!\033[0m"
     echo "After reboot, run: home-manager switch --flake ./#${NEW_USER}"
 elif [ "$choice" == "2" ]; then
-    # Rebuild flow
-    rebuild_mode=$(dialog --backtitle "NixOS Installer" \
-        --menu "Select rebuild mode" 12 60 3 \
+    rebuild_mode=$(_dialog --menu "Select rebuild mode" 12 60 3 \
         1 "switch" \
         2 "boot" \
-        3 "build" \
-        --stdout 2>&1 >/dev/tty)
+        3 "build")
 
     case $rebuild_mode in
-        1) mode="switch";;
-        2) mode="boot";;
-        3) mode="build";;
-        *) msg_error "Invalid option. Exiting."; exit 1;;
+        1) mode="switch" ;;
+        2) mode="boot"   ;;
+        3) mode="build"  ;;
+        *) msg_error "Invalid option. Exiting."; exit 1 ;;
     esac
 
     clear
