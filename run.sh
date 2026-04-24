@@ -209,6 +209,42 @@ while true; do
     esac
 done
 
+# Extract current version from the nixosVersion binding (let block)
+CURRENT_VERSION=$(grep -Po 'nixosVersion\s*=\s*"\K[^"]+' "$FLAKE_FILE" 2>/dev/null)
+# Fallback if extraction fails
+CURRENT_VERSION=${CURRENT_VERSION:-25.11}
+
+echo -e "${YELLOW}Current NixOS version: ${GREEN}${CURRENT_VERSION}${RESET}"
+echo -e "${CYAN}This version is used for nixpkgs, home-manager, stateVersion and homeStateVersion.${RESET}"
+echo -e "${YELLOW}Enter new version (format YY.MM, e.g. 25.11) or press Enter to keep '${CURRENT_VERSION}'.${RESET}"
+read -p "New version: " NEW_VERSION
+
+# If nothing entered, keep the old one
+if [[ -z "$NEW_VERSION" ]]; then
+    NEW_VERSION="$CURRENT_VERSION"
+fi
+
+# Basic validation (YY.MM)
+if [[ ! "$NEW_VERSION" =~ ^[0-9]{2}\.[0-9]{2}$ ]]; then
+    warning_message "Invalid format. Keeping ${CURRENT_VERSION}."
+    NEW_VERSION="$CURRENT_VERSION"
+fi
+
+if [[ "$NEW_VERSION" != "$CURRENT_VERSION" ]]; then
+    # 2. Update the nixosVersion variable in the let block
+    sed -i "s/\(nixosVersion = \"\)[^\"]*\(\"\)/\1${NEW_VERSION}\2/" "$FLAKE_FILE"
+
+    # 3. Update the two input URLs (nixpkgs/nixos-YY.MM and home-manager/release-YY.MM)
+    sed -i \
+        -e "s|\(github:nixos/nixpkgs/nixos-\)[0-9]\{2\}\.[0-9]\{2\}|\1${NEW_VERSION}|" \
+        -e "s|\(github:nix-community/home-manager/release-\)[0-9]\{2\}\.[0-9]\{2\}|\1${NEW_VERSION}|" \
+        "$FLAKE_FILE"
+
+    info_message "NixOS version updated to ${GREEN}${NEW_VERSION}${RESET} in flake.nix."
+else
+    info_message "NixOS version remains ${GREEN}${NEW_VERSION}${RESET}."
+fi
+
 # Prompt to clean garbage
 echo -e "${YELLOW}Do you want to clean garbage to free up space?${RESET}"
 echo -e "${GREEN}1) Yes${RESET}"

@@ -3,6 +3,8 @@
 
   inputs = {
 
+    nixosVersion = "25.11";
+
     nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
 
     home-manager = {
@@ -16,10 +18,10 @@
 
   outputs = { self, nixpkgs, home-manager, ... }@inputs: let
     system = "x86_64-linux";
-    homeStateVersion = "25.11";
+    homeStateVersion = nixosVersion;
     user = "user";
     hosts = [
-      { hostname = "nixos"; stateVersion = "25.11"; }
+      { hostname = "nixos"; stateVersion = nixosVersion; }
     ];
 
     makeSystem = { hostname, stateVersion }: nixpkgs.lib.nixosSystem {

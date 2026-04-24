@@ -25,11 +25,40 @@
             root = {
               size = "100%";
               content = {
-                type = "filesystem";
-                format = "ext4";
-                mountpoint = "/";
-              };
+                type = "btrfs";
+                extraArgs = [ "-f" ];
+                subvolumes = {
+                  "/root" = {
+                    mountpoint = "/";
+                    mountOptions = [ "compress=zstd" "noatime" ];
+                  };
+                  "/home" = {
+                    mountpoint = "/home";
+                    mountOptions = [ "compress=zstd" "noatime" ];
+                  };
+                  "/nix" = {
+                    mountpoint = "/nix";
+                    mountOptions = [ "compress=zstd" "noatime" ];
+                  };
+                  "/log" = {
+                    mountpoint = "/var/log";
+                    mountOptions = [ "compress=zstd" "noatime" ];
+                  };
+                  "/swap" = {
+                    mountpoint = "/swap";
+                    mountOptions = [ "compress=zstd" "noatime" "noexec" "nosuid" "nodev" ];
+                  };
+                };
+              };  
             };
+            # root = {
+            #   size = "100%";
+            #   content = {
+            #     type = "filesystem";
+            #     format = "ext4";
+            #     mountpoint = "/";
+            #   };
+            # };
           };
         };
       };
