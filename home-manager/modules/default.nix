@@ -11,10 +11,10 @@
     ./ranger.nix
     #./starship.nix
     #./stylix.nix
-    #./swaync
+    ./swaync
     ./tmux.nix
-    #./waybar
-    #./wofi
+    ./waybar
+    ./wofi
     #./zathura.nix
     #./zsh.nix
   ];

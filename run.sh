@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$SCRIPT_DIR"
+FLAKE_FILE="$REPO_ROOT/flake.nix"
+PASSWD="$REPO_ROOT/nixos/modules/user.nix"
+HOSTS_DIR="$REPO_ROOT/hosts"
+
 # ------------------------------------------------------------
 # Check for dialog – install it if missing (NixOS live ISO)
 # ------------------------------------------------------------
@@ -9,14 +15,9 @@ if ! command -v dialog &> /dev/null; then
     exit
 fi
 
-export DIALOGRC="$PWD/.dialogrc"   # or wherever you place it
+export DIALOGRC="$REPO_ROOT/.dialogrc"   # or wherever you place it
 
-# ------------------------------------------------------------
-# Paths
-# ------------------------------------------------------------
-FLAKE_FILE="./NixOS/flake.nix"
-PASSWD="./NixOS/nixos/modules/user.nix"
-HOSTS_DIR="./NixOS/hosts"
+cd "$REPO_ROOT" || { echo "Failed to cd into $REPO_ROOT"; exit 1; }
 
 # ------------------------------------------------------------
 # Helper functions
@@ -73,7 +74,7 @@ if [ $disko_choice -eq 0 ]; then
             msg_info "Running disko with mode: $disko_mode"
             sudo nix --experimental-features "nix-command flakes" \
                 run github:nix-community/disko/latest -- \
-                --mode "$disko_mode" ./NixOS/disko.nix
+                --mode "$disko_mode" ./disko.nix
         fi
     fi
 else
@@ -282,9 +283,9 @@ else
 fi
 
 # ------------------------------------------------------------
-# 8. Move to NixOS directory
+# 8. Move to repository root
 # ------------------------------------------------------------
-cd NixOS/ || { msg_error "Failed to cd into NixOS/"; exit 1; }
+cd "$REPO_ROOT" || { msg_error "Failed to cd into $REPO_ROOT"; exit 1; }
 msg_info "Working directory: $(pwd)"
 
 # ------------------------------------------------------------
@@ -330,7 +331,7 @@ if [ "$choice" == "1" ]; then
     clear
     echo "Running installation..."
     sudo nixos-generate-config --root /mnt
-    cp /mnt/etc/nixos/hardware-configuration.nix ./hosts/$HOSTNAME/
+    cp /mnt/etc/nixos/hardware-configuration.nix "$REPO_ROOT/hosts/$HOSTNAME/"
     git add .
     echo "Starting nixos-install --flake ./#$HOSTNAME"
     sudo nixos-install --flake ./#$HOSTNAME
@@ -351,7 +352,7 @@ elif [ "$choice" == "2" ]; then
 
     clear
     echo "Running rebuild..."
-    cp /etc/nixos/hardware-configuration.nix ./hosts/$HOSTNAME/
+    cp /etc/nixos/hardware-configuration.nix "$REPO_ROOT/hosts/$HOSTNAME/"
     git add .
     echo "Executing: sudo nixos-rebuild $mode --flake ./#$HOSTNAME"
     sudo nixos-rebuild "$mode" --flake ./#$HOSTNAME
