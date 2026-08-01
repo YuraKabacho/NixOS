@@ -14,8 +14,6 @@ if ! command -v dialog &> /dev/null; then
     exec nix-shell -p dialog --run "bash \"$0\" ${@+\"$@\"}"
 fi
 
-export DIALOGRC="$REPO_ROOT/.dialogrc"   # or wherever you place it
-
 cd "$REPO_ROOT" || { echo "Failed to cd into $REPO_ROOT"; exit 1; }
 
 # ------------------------------------------------------------
