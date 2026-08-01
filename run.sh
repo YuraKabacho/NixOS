@@ -11,8 +11,7 @@ HOSTS_DIR="$REPO_ROOT/hosts"
 # ------------------------------------------------------------
 if ! command -v dialog &> /dev/null; then
     echo "dialog not found. Installing temporarily via nix-shell..."
-    nix-shell -p dialog --run "$0"
-    exit
+    exec nix-shell -p dialog --run "bash \"$0\" ${@+\"$@\"}"
 fi
 
 export DIALOGRC="$REPO_ROOT/.dialogrc"   # or wherever you place it
